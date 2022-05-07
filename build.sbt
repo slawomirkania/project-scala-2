@@ -11,6 +11,6 @@ libraryDependencies ++= Seq(
 
 lazy val root = (project in file("."))
   .settings(
-    name.withRank(KeyRanks.Invisible) := "InterviewSpyrosoftScala2",
+    name.withRank(KeyRanks.Invisible) := "ProjectScala2",
     idePackagePrefix.withRank(KeyRanks.Invisible) := Some("com.example")
   )
