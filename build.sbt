@@ -18,6 +18,9 @@ libraryDependencies ++= Seq(
   Dependency.http4sCirce,
   Dependency.http4sClient,
   Dependency.http4sServer
+)++ Seq(
+  Dependency.fs2Core,
+  Dependency.fs2IO
 )
 
 lazy val root = (project in file("."))
