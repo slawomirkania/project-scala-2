@@ -12,6 +12,12 @@ libraryDependencies ++= Seq(
 ) ++ Seq(
   Dependency.munitCatsEffect,
   Dependency.munitScalaCheckEffect
+) ++ Seq(
+  Dependency.http4sCore,
+  Dependency.http4sDsl,
+  Dependency.http4sCirce,
+  Dependency.http4sClient,
+  Dependency.http4sServer
 )
 
 lazy val root = (project in file("."))
