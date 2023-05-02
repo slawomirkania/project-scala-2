@@ -1,14 +1,14 @@
 package com.example
 
 import cats.effect.{ IO, Resource }
-import munit.CatsEffectSuite
+import munit.{ CatsEffectSuite, ScalaCheckEffectSuite }
 import doobie._
 import doobie.implicits._
 import doobie.h2._
-import org.scalacheck.Gen
+import org.scalacheck.{ Gen, ShrinkLowPriority }
 import org.scalacheck.effect.PropF.forAllF
 
-class DoobieSuite extends CatsEffectSuite {
+class DoobieSuite extends CatsEffectSuite with ScalaCheckEffectSuite with ShrinkLowPriority {
   import DoobieSuite._
 
   test("Check connection") {
@@ -21,12 +21,13 @@ class DoobieSuite extends CatsEffectSuite {
   }
 
   test("Check query") {
-    forAllF(Gen.alphaUpperStr.retryUntil(_.length == 3), Gen.alphaUpperStr, Gen.choose(1, 10000)) {
+    forAllF(Gen.alphaUpperStr.retryUntil(_.length <= 3), Gen.alphaUpperStr, Gen.choose(1, 10000)) {
       (code, name, population) =>
         val program = for {
+          _     <- Queries.dropTable.update.run
           _     <- Queries.createCountryTable.update.run
           _     <- Queries.insertData.update.run
-          _     <- sql"INSERT INTO country values ('$code', '$name', $population)".update.run
+          _     <- sql"INSERT INTO country VALUES ($code, $name, $population)".update.run
           count <- sql"SELECT count(*) FROM country".query[Int].unique
         } yield count
 
@@ -63,8 +64,11 @@ object DoobieSuite {
 
     val insertData =
       sql"""
-           |INSERT INTO country values ('PL', 'Poland', 40000000);
-           |INSERT INTO country values ('US', 'USA', 400000000);
+           |INSERT INTO country VALUES ('PL', 'Poland', 40000000);
+           |INSERT INTO country VALUES ('US', 'USA', 400000000);
            |""".stripMargin
+
+    val dropTable =
+      sql"""DROP TABLE IF EXISTS country;"""
   }
 }
