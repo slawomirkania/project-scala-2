@@ -47,4 +47,18 @@ class ScalaSuite extends CatsEffectSuite {
     val catVet: Vet[Cat]                     = new Vet[Animal]
     val dogVet: Vet[Dog]                     = new Vet[Animal]
   }
+
+  test("Currying") {
+    def sum(a: Int, b: Int): Int      = a + b
+    def curriedSum: Int => Int => Int = a => b => a + b
+
+    assertEquals(sum(2, 4), 6)
+    assertEquals(curriedSum(2)(4), 6)
+
+    // eta-expansion
+    assertEquals((sum _).curried(2)(4), 6)
+
+    // partial application
+    assertEquals(Some(2).map(curriedSum(4)), Some(6))
+  }
 }
