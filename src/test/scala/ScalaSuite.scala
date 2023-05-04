@@ -30,4 +30,21 @@ class ScalaSuite extends CatsEffectSuite {
     assertEquals(Rectangle(5.2, 2.54).area, 13.21)
     assertEquals(Circle(2.3).area, 7.23)
   }
+
+  test("Variance") {
+    trait Animal
+    final case class Dog() extends Animal
+    final case class Cat() extends Animal
+
+    class UniversalCage[+T] // covariant
+    class DedicatedCage[T]  // invariant
+    class Vet[-T]           // contravariant
+
+    val catCage: UniversalCage[Animal]       = new UniversalCage[Cat]
+    val dogCage: UniversalCage[Animal]       = new UniversalCage[Dog]
+    val dogDedicatedCage: DedicatedCage[Dog] = new DedicatedCage[Dog]
+    val catDedicatedCage: DedicatedCage[Cat] = new DedicatedCage[Cat]
+    val catVet: Vet[Cat]                     = new Vet[Animal]
+    val dogVet: Vet[Dog]                     = new Vet[Animal]
+  }
 }
