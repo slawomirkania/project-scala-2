@@ -61,4 +61,11 @@ class ScalaSuite extends CatsEffectSuite {
     // partial application
     assertEquals(Some(2).map(curriedSum(4)), Some(6))
   }
+
+  test("Partially applied functions") {
+    def sum(a: Int, b: Int): Int        = a + b
+    def partiallyAppliedSum: Int => Int = sum(1, _: Int)
+
+    assertEquals(partiallyAppliedSum(2), 3)
+  }
 }
