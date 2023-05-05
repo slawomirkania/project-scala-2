@@ -68,4 +68,45 @@ class ScalaSuite extends CatsEffectSuite {
 
     assertEquals(partiallyAppliedSum(2), 3)
   }
+
+  test("Partial function") {
+    def incrementEven: PartialFunction[Int, Int] = new PartialFunction[Int, Int] {
+      def isDefinedAt(x: Int): Boolean = x % 2 == 0
+      def apply(x: Int): Int           = x + 1
+    }
+
+    assertEquals(incrementEven.isDefinedAt(1), false)
+    assertEquals(incrementEven.isDefinedAt(2), true)
+    assertEquals(incrementEven.isDefinedAt(4), true)
+
+    def incrementEvenImplicit: PartialFunction[Int, Int] = {
+      case x if x % 2 == 0 => x + 1
+    }
+
+    // assertEquals(evenImplicit(1), 2) // scala.MatchError
+    assertEquals(incrementEvenImplicit(2), 3)
+    assertEquals(incrementEvenImplicit(4), 5)
+
+    def incrementOddImplicit: PartialFunction[Int, Int] = {
+      case x if x % 2 != 0 => x + 1
+    }
+
+    val incrementOddAndThenEvenImplicit = incrementOddImplicit andThen incrementEvenImplicit
+
+    assertEquals(incrementOddAndThenEvenImplicit(1), 3)
+
+    val incrementOddOrEvenImplicit = incrementOddImplicit orElse incrementEvenImplicit
+
+    assertEquals(incrementOddOrEvenImplicit(1), 2)
+    assertEquals(incrementOddOrEvenImplicit(2), 3)
+
+    assertEquals(List(1, 2, 3, 4).collect(incrementOddImplicit), List(2, 4))
+    assertEquals(List(1, 2, 3, 4).collect(incrementEvenImplicit), List(3, 5))
+
+    assertEquals(List(1, 3).map(incrementOddImplicit), List(2, 4))
+    assertEquals(List(2, 4).map(incrementEvenImplicit), List(3, 5))
+
+    assertEquals(List(1, 2, 3, 4).filter { x: Int => x % 2 != 0 }, List(1, 3))
+    assertEquals(List(1, 2, 3, 4).filter { x: Int => x % 2 == 0 }, List(2, 4))
+  }
 }
