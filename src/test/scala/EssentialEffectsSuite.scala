@@ -1,9 +1,10 @@
 package com.example
 
+import cats.effect.IO
 import munit.CatsEffectSuite
 
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{ DurationInt, FiniteDuration }
 
 class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteContext {
   test("unsafeRun") {
@@ -36,6 +37,17 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
     timedHello.unsafeRun() match {
       case (duration, _) => println(s"hello took $duration")
     }
+  }
+
+  test("Ticking Clock".ignore) {
+    def program: IO[Unit] = for {
+      time <- IO(System.currentTimeMillis())
+      _    <- IO.println(time)
+      _    <- IO.sleep(1.second)
+      _    <- program
+    } yield ()
+
+    program.unsafeRunSync()
   }
 }
 
