@@ -21,6 +21,9 @@ object Dependency {
   val fs2Core = "co.fs2" %% "fs2-core" % Version.fs2
   val fs2IO   = "co.fs2" %% "fs2-io"   % Version.fs2
 
-  val munitCatsEffect       = "org.typelevel" %% "munit-cats-effect-3"     % "1.0.7" % Test
-  val munitScalaCheckEffect = "org.typelevel" %% "scalacheck-effect-munit" % "1.0.4" % Test
+  val munitCatsEffect       = "org.typelevel"              %% "munit-cats-effect-3"       % "1.0.7" % Test
+  val munitScalaCheckEffect = "org.typelevel"              %% "scalacheck-effect-munit"   % "1.0.4" % Test
+  val catsLaws              = "org.typelevel"              %% "cats-laws"                 % "2.9.0" % Test
+  val scalacheckShapeless   = "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % "1.2.5" % Test
+  val disciplineMunit       = "org.typelevel"              %% "discipline-munit"          % "1.0.9" % Test
 }
