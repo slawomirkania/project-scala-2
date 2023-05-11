@@ -1,6 +1,6 @@
 package com.example
 
-import cats.{ Functor, Monoid, Semigroup }
+import cats.{ Apply, Functor, Monoid, Semigroup }
 import munit.CatsEffectSuite
 import cats.implicits._
 import cats.kernel.Eq
@@ -76,6 +76,22 @@ class CatsSuite extends CatsEffectSuite with CatsSuiteContext with DisciplineSui
 
     val names = List("asd", "dsadfsa", "d")
     assertEquals(Functor[List].fproduct(names)(_.length).toMap, Map("asd" -> 3, "dsadfsa" -> 7, "d" -> 1))
+  }
+
+  test("Apply") {
+    assertEquals(Apply[Option].ap[String, Int](Some(_.length))(Some("test")), Some(4))
+    assertEquals(
+      Apply[List].ap[String, String](List(_ + "_", _ + "*"))(List("test1", "test2")),
+      List("test1_", "test2_", "test1*", "test2*")
+    )
+
+    assertEquals(Apply[Option].ap2[Int, Int, Int](Some((a, b) => a + b))(Some(1), Some(2)), Some(3))
+    assertEquals((Option(1), Option(2)).apWith[Int](Option((a, b) => a + b)), Option(3))
+
+    assertEquals(Apply[Option].map2(Some(1), Some(2))((a, b) => a + b), Some(3))
+    assertEquals((Option(1), Option(2)).mapN((a, b) => a + b), Some(3))
+
+    assertEquals(Apply[Option].tuple2(Some(1), Some(2)), Some((1, 2)))
   }
 }
 
