@@ -6,7 +6,6 @@ import cats.implicits._
 import cats.kernel.Eq
 import cats.kernel.laws.discipline.{ MonoidTests, SemigroupTests }
 import munit.DisciplineSuite
-import org.scalacheck.{ Arbitrary, Gen }
 
 class CatsSuite extends CatsEffectSuite with CatsSuiteContext with DisciplineSuite {
 
@@ -51,6 +50,8 @@ class CatsSuite extends CatsEffectSuite with CatsSuiteContext with DisciplineSui
     assertEquals(optionalPrices2.foldMap(identity), OptionalPrice(None))
   }
 
+  import org.scalacheck.ScalacheckShapeless._
+
   checkAll("Price.Semigroup", SemigroupTests[Price].semigroup)
   checkAll("OptionalPrice.MonoidLaws", MonoidTests[OptionalPrice].monoid)
 }
@@ -59,18 +60,14 @@ trait CatsSuiteContext {
   final case class Price(value: Int)
 
   object Price {
-    implicit def eqPrice: Eq[Price]         = Eq.fromUniversalEquals
-    implicit def arbPrice: Arbitrary[Price] = Arbitrary(Gen.posNum[Int].map(Price.apply))
-    implicit def sum: Semigroup[Price]      = (p1, p2) => Price(p1.value + p2.value)
+    implicit def eqPrice: Eq[Price]    = Eq.fromUniversalEquals
+    implicit def sum: Semigroup[Price] = (p1, p2) => Price(p1.value + p2.value)
   }
 
   final case class OptionalPrice(value: Option[Int])
 
   object OptionalPrice {
     implicit def eqOptionalPrice: Eq[OptionalPrice] = Eq.fromUniversalEquals
-    implicit def arbOptionalPrice: Arbitrary[OptionalPrice] = Arbitrary(
-      Gen.option(Gen.posNum[Int]).map(OptionalPrice.apply)
-    )
     implicit def monoidOptionalPrice: Monoid[OptionalPrice] =
       new Monoid[OptionalPrice] {
         def combine(x: OptionalPrice, y: OptionalPrice): OptionalPrice = {
