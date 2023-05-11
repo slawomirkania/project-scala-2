@@ -1,6 +1,6 @@
 package com.example
 
-import cats.{ Monoid, Semigroup }
+import cats.{ Functor, Monoid, Semigroup }
 import munit.CatsEffectSuite
 import cats.implicits._
 import cats.kernel.Eq
@@ -54,9 +54,40 @@ class CatsSuite extends CatsEffectSuite with CatsSuiteContext with DisciplineSui
 
   checkAll("Price.Semigroup", SemigroupTests[Price].semigroup)
   checkAll("OptionalPrice.MonoidLaws", MonoidTests[OptionalPrice].monoid)
+
+  test("Functor") {
+    assertEquals(Functor[Option].map(Option("test"))(_.length), Option(4))
+
+    val lengthFunctor: Option[String] => Option[Int] = Functor[Option].lift(_.length)
+    assertEquals(lengthFunctor(Option("test")), Option(4))
+
+    assertEquals(Functor[Hole].map(Hole(5))(_ * 2), Hole(10))
+    assertEquals(Hole(5).map(_ * 2), Hole(10))
+
+    val listOption    = Functor[List].compose(Functor[Option])
+    val listOfOptions = List(Some(1), Some(2), None, Some(3))
+
+    assertEquals(listOption.map(listOfOptions)(_ + 1), List(Some(2), Some(3), None, Some(4)))
+
+    val optionList   = Functor[Option].compose(Functor[List])
+    val optionOfList = Option(List(Some(1), Some(2), None, Some(3)))
+
+    assertEquals(optionList.map(optionOfList)(_.map(_ + 1)), Some(List(Some(2), Some(3), None, Some(4))))
+
+    val names = List("asd", "dsadfsa", "d")
+    assertEquals(Functor[List].fproduct(names)(_.length).toMap, Map("asd" -> 3, "dsadfsa" -> 7, "d" -> 1))
+  }
 }
 
 trait CatsSuiteContext {
+  final case class Hole[A](value: A)
+
+  object Hole {
+    implicit val functorHole: Functor[Hole] = new Functor[Hole] {
+      override def map[A, B](fa: Hole[A])(f: A => B): Hole[B] = Hole(f(fa.value))
+    }
+  }
+
   final case class Price(value: Int)
 
   object Price {
