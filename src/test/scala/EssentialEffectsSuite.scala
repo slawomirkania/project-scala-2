@@ -2,15 +2,9 @@ package com.example
 
 import cats.Parallel
 import cats.effect.IO
-import cats.implicits.{
-  catsSyntaxParallelSequence1,
-  catsSyntaxParallelTraverse1,
-  catsSyntaxTuple2Parallel,
-  catsSyntaxTuple2Semigroupal,
-  catsSyntaxTuple3Parallel,
-  toTraverseOps
-}
+import cats.implicits._
 import munit.CatsEffectSuite
+import cats.data.EitherNes
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
@@ -108,6 +102,24 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
     assertIO(program2.attempt.map(_.left.map(_.getMessage)), Left("error 2"))
     assertIO(program3.attempt.map(_.left.map(_.getMessage)), Left("error 3"))
     assertIO(program4.attempt.map(_.left.map(_.getMessage)), Left("error 4"))
+  }
+
+  test("parMapN vs mapN - EitherNes") {
+    final case class Error(value: String)
+    final case class Part(value: String)
+    final case class Full(part1: Part, part2: Part, part3: Part)
+
+    implicit val orderError: cats.Order[Error] = cats.Order.by(_.value)
+
+    val ok: EitherNes[Error, Part]     = Part("ok").asRight.toEitherNes
+    val error1: EitherNes[Error, Part] = Error("error 1").asLeft[Part].toEitherNes
+    val error2: EitherNes[Error, Part] = Error("error 2").asLeft[Part].toEitherNes
+
+    assertEquals((error1, ok, error2).mapN(Full.apply).leftMap(_.toList), List(Error("error 1")).asLeft[Full])
+    assertEquals(
+      (error1, ok, error2).parMapN(Full.apply).leftMap(_.toList),
+      List(Error("error 1"), Error("error 2")).asLeft[Full]
+    )
   }
 }
 
