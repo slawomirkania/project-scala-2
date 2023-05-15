@@ -1,6 +1,6 @@
 package com.example
 
-import cats.{ Apply, Functor, Monoid, Semigroup }
+import cats.{ Applicative, Apply, Functor, Monoid, Semigroup }
 import munit.CatsEffectSuite
 import cats.implicits._
 import cats.kernel.Eq
@@ -92,6 +92,12 @@ class CatsSuite extends CatsEffectSuite with CatsSuiteContext with DisciplineSui
     assertEquals((Option(1), Option(2)).mapN((a, b) => a + b), Some(3))
 
     assertEquals(Apply[Option].tuple2(Some(1), Some(2)), Some((1, 2)))
+  }
+
+  test("Applicative") {
+    assertEquals(Applicative[Option].pure(1), Some(1))
+    assertEquals((Applicative[List] compose Applicative[Option]).pure(1), List(Some(1)))
+    assertEquals(Applicative[List].compose[Option].pure(1), List(Some(1)))
   }
 }
 
