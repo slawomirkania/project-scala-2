@@ -34,6 +34,31 @@ class DoobieSuite extends CatsEffectSuite with ScalaCheckEffectSuite with Shrink
         assertIO(H2Store.commit(program), 3)
     }
   }
+
+  test("read row to case class") {
+    forAllF(Gen.alphaUpperStr.retryUntil(_.length <= 3), Gen.alphaUpperStr, Gen.choose(1, 10000)) {
+      (code, name, population) =>
+        final case class Full(code: String, name: String, population: Long)
+        final case class Part(code: String, population: Long)
+
+        final case class Combined(part: Part, name: String)
+
+        val fullExpected     = Full(code, name, population)
+        val partExpected     = Part(code, population)
+        val combinedExpected = Combined(partExpected, name)
+
+        val program = for {
+          _        <- Queries.dropTable.update.run
+          _        <- Queries.createCountryTable.update.run
+          _        <- sql"INSERT INTO country VALUES ($code, $name, $population)".update.run
+          full     <- sql"SELECT code, name, population FROM country".query[Full].unique
+          part     <- sql"SELECT code, population FROM country".query[Part].unique
+          combined <- sql"SELECT code, population, name FROM country".query[Combined].unique
+        } yield (full, part, combined)
+
+        assertIO(H2Store.commit(program), (fullExpected, partExpected, combinedExpected))
+    }
+  }
 }
 
 object DoobieSuite {
