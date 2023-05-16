@@ -60,7 +60,7 @@ class DoobieSuite extends CatsEffectSuite with ScalaCheckEffectSuite with Shrink
     }
   }
 
-  test("Get") {
+  test("Get and Read") {
     final case class Numbers(one: One, two: Two, incremented: Incremented)
 
     final case class One(value: Int)
@@ -70,10 +70,13 @@ class DoobieSuite extends CatsEffectSuite with ScalaCheckEffectSuite with Shrink
     implicit val getOne: Get[One]                 = Get[Int].temap(i => Either.cond(i == 1, One(i), "Error parsing int to One"))
     implicit val getTwo: Get[Two]                 = Get[Int].temap(i => Either.cond(i == 2, Two(i), "Error parsing int to Two"))
     implicit val getIncremented: Get[Incremented] = Get[Int].tmap(i => Incremented(i + 1))
+    implicit val readNumbersAdd10: Read[Numbers] = Read[(One, Two, Incremented)].map { case (one, two, incremented) =>
+      Numbers(One(one.value + 10), Two(two.value + 10), Incremented(incremented.value + 10))
+    }
 
     def query = sql"select 1,2,3,4".query[Numbers].unique
 
-    assertIO(H2Store.commit(query), Numbers(One(1), Two(2), Incremented(4)))
+    assertIO(H2Store.commit(query), Numbers(One(11), Two(12), Incremented(14)))
   }
 }
 
