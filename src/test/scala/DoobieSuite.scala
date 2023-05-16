@@ -61,22 +61,31 @@ class DoobieSuite extends CatsEffectSuite with ScalaCheckEffectSuite with Shrink
   }
 
   test("Get and Read") {
-    final case class Numbers(one: One, two: Two, incremented: Incremented)
+    def sql = sql"select 1,2,3"
 
-    final case class One(value: Int)
-    final case class Two(value: Int)
-    final case class Incremented(value: Int)
+    val program = for {
+      tupledInts    <- sql.query[(Int, Int, Int)].unique
+      tupledClasses <- sql.query[(One, Two, Incremented)].unique
+      numbers       <- sql.query[Numbers].unique
+    } yield (tupledInts, tupledClasses, numbers)
 
-    implicit val getOne: Get[One]                 = Get[Int].temap(i => Either.cond(i == 1, One(i), "Error parsing int to One"))
-    implicit val getTwo: Get[Two]                 = Get[Int].temap(i => Either.cond(i == 2, Two(i), "Error parsing int to Two"))
-    implicit val getIncremented: Get[Incremented] = Get[Int].tmap(i => Incremented(i + 1))
-    implicit val readNumbersAdd10: Read[Numbers] = Read[(One, Two, Incremented)].map { case (one, two, incremented) =>
-      Numbers(One(one.value + 10), Two(two.value + 10), Incremented(incremented.value + 10))
-    }
+    assertIO(
+      H2Store.commit(program),
+      ((1, 2, 3), (One(1), Two(2), Incremented(3)), Numbers(One(11), Two(12), Incremented(14)))
+    )
+  }
 
-    def query = sql"select 1,2,3,4".query[Numbers].unique
+  test("Write") {
+    val numbers = Numbers(One(1), Two(2), Incremented(3))
 
-    assertIO(H2Store.commit(query), Numbers(One(11), Two(12), Incremented(14)))
+    val program = for {
+      _      <- Queries.dropTable.update.run
+      _      <- Queries.createNumbersTable.update.run
+      _      <- sql"INSERT INTO numbers VALUES ($numbers)".update.run
+      result <- sql"SELECT one, two, incremented FROM numbers".query[(Int, Int, Int)].unique
+    } yield result
+
+    assertIO(H2Store.commit(program), (1, 2, 4))
   }
 }
 
@@ -106,6 +115,15 @@ object DoobieSuite {
            |)
            |""".stripMargin
 
+    val createNumbersTable =
+      sql"""
+           |CREATE TABLE numbers (
+           |  one         integer   NOT NULL,
+           |  two         integer   NOT NULL,
+           |  incremented integer   NOT NULL
+           |)
+           |""".stripMargin
+
     val insertData =
       sql"""
            |INSERT INTO country VALUES ('PL', 'Poland', 40000000);
@@ -113,6 +131,23 @@ object DoobieSuite {
            |""".stripMargin
 
     val dropTable =
-      sql"""DROP TABLE IF EXISTS country;"""
+      sql"""DROP TABLE IF EXISTS country; DROP TABLE IF EXISTS numbers;"""
+  }
+
+  final case class Numbers(one: One, two: Two, incremented: Incremented)
+  final case class One(value: Int)         extends AnyVal
+  final case class Two(value: Int)         extends AnyVal
+  final case class Incremented(value: Int) extends AnyVal
+
+  object Numbers {
+    implicit val getOne: Get[One]                 = Get[Int].temap(i => Either.cond(i == 1, One(i), "Error parsing int to One"))
+    implicit val getTwo: Get[Two]                 = Get[Int].temap(i => Either.cond(i == 2, Two(i), "Error parsing int to Two"))
+    implicit val getIncremented: Get[Incremented] = Get[Int].tmap(i => Incremented(i + 1))
+    implicit val readNumbersAdd10: Read[Numbers] = Read[(One, Two, Incremented)].map { case (one, two, incremented) =>
+      Numbers(One(one.value + 10), Two(two.value + 10), Incremented(incremented.value + 10))
+    }
+    implicit val writeNumbersIncremented: Write[Numbers] = Write[(One, Two, Incremented)].contramap { n =>
+      (n.one, n.two, Incremented(n.incremented.value + 1))
+    }
   }
 }
