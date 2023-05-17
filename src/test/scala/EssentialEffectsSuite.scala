@@ -5,6 +5,7 @@ import cats.effect.IO
 import cats.implicits._
 import munit.CatsEffectSuite
 import cats.data.EitherNes
+import cats.effect.kernel.Resource
 import cats.effect.testkit.TestControl
 
 import java.util.concurrent.TimeUnit
@@ -200,6 +201,15 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
     val program = IO.race(task, timeout)
 
     TestControl.executeEmbed(program).assertEquals("timeout".asRight)
+  }
+
+  test("Resource") {
+    val result =
+      Resource.make(IO.println("acquired") >> IO("one"))(_ => IO.println("closed")).map(_ + " two").use { s =>
+        IO.println("processing...") >> IO(s + " three")
+      }
+
+    assertIO(result, "one two three")
   }
 }
 
