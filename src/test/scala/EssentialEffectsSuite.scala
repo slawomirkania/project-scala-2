@@ -104,7 +104,7 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
     assertIO(program4.attempt.map(_.left.map(_.getMessage)), Left("error 4"))
   }
 
-  test("parMapN vs mapN - EitherNes") {
+  test("parMapN vs mapN vs flatMapN - EitherNes") {
     final case class Error(value: String)
     final case class Part(value: String)
     final case class Full(part1: Part, part2: Part, part3: Part)
@@ -116,6 +116,10 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
     val error2: EitherNes[Error, Part] = Error("error 2").asLeft[Part].toEitherNes
 
     assertEquals((error1, ok, error2).mapN(Full.apply).leftMap(_.toList), List(Error("error 1")).asLeft[Full])
+    assertEquals(
+      (error1, ok, error2).flatMapN(Full.apply(_, _, _).asRight[Error].toEitherNes).leftMap(_.toList),
+      List(Error("error 1")).asLeft[Full]
+    )
     assertEquals(
       (error1, ok, error2).parMapN(Full.apply).leftMap(_.toList),
       List(Error("error 1"), Error("error 2")).asLeft[Full]
