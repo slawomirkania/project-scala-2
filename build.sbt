@@ -11,7 +11,8 @@ libraryDependencies ++= Seq(
   Dependency.doobieH2
 ) ++ Seq(
   Dependency.munitCatsEffect,
-  Dependency.munitScalaCheckEffect
+  Dependency.munitScalaCheckEffect,
+  Dependency.catsEffectTestkit
 ) ++ Seq(
   Dependency.http4sCore,
   Dependency.http4sDsl,

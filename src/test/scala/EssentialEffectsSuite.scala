@@ -5,6 +5,7 @@ import cats.effect.IO
 import cats.implicits._
 import munit.CatsEffectSuite
 import cats.data.EitherNes
+import cats.effect.testkit.TestControl
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
@@ -190,6 +191,15 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
       IO(true).redeemWith(_ => IO("recover"), b => IO(s"$b bind")),
       "true bind"
     )
+  }
+
+  test("IO.race") {
+    val task    = (IO.sleep(30.minutes) >> IO("task")).onCancel(IO.println("task cancelled"))
+    val timeout = (IO.sleep(10.minutes) >> IO("timeout")).onCancel(IO.println("timeout cancelled"))
+
+    val program = IO.race(task, timeout)
+
+    TestControl.executeEmbed(program).assertEquals("timeout".asRight)
   }
 }
 
