@@ -192,6 +192,16 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
       IO(true).redeemWith(_ => IO("recover"), b => IO(s"$b bind")),
       "true bind"
     )
+
+    assertIO(
+      (for {
+        _ <- IO("1").print
+        _ <- IO("2").print
+        _ <- IO.raiseError[String](new RuntimeException("boom")).print
+        _ <- IO("3").print
+      } yield ()).attempt.map(_.leftMap(_.getMessage)),
+      Left("boom")
+    )
   }
 
   test("IO.race") {
@@ -210,6 +220,43 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
       }
 
     assertIO(result, "one two three")
+  }
+
+  test("Parallelism depends on CPUs") {
+    def task(i: Int): IO[String] = IO(s"processing $i").print
+
+    for {
+      cpus <- IO(Runtime.getRuntime.availableProcessors())
+      _    <- IO.println(s"available CPUs $cpus")
+      _    <- List.range(0, cpus * 2).parTraverse(task)
+    } yield ()
+  }
+
+  test("Context shifting".ignore) {
+    for {
+      _ <- IO("task 1").print
+      _ <- IO("task 2").print
+      _ <- IO("task 3").print
+      _ <- IO("task 4").print
+    } yield ()
+  }
+
+  test("Context shifting 2".ignore) {
+    for {
+      _ <- IO.blocking("task 1").print
+      _ <- IO.blocking("task 2").print
+      _ <- IO.blocking("task 3").print
+      _ <- IO.blocking("task 4").print
+    } yield ()
+  }
+
+  test("Context shifting 3".ignore) {
+    (
+      IO("non blocking 1").print,
+      IO.blocking("blocking 1").print,
+      IO("non blocking 2").print,
+      IO.blocking("blocking 2").print
+    ).parTupled
   }
 }
 
