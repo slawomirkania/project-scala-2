@@ -1,5 +1,7 @@
 package com.example
 
+import cats.data.{ NonEmptyChain, ValidatedNec }
+import cats.data.Validated._
 import cats.{ Applicative, Apply, Functor, Monoid, Semigroup }
 import munit.CatsEffectSuite
 import cats.implicits._
@@ -98,6 +100,21 @@ class CatsSuite extends CatsEffectSuite with CatsSuiteContext with DisciplineSui
     assertEquals(Applicative[Option].pure(1), Some(1))
     assertEquals((Applicative[List] compose Applicative[Option]).pure(1), List(Some(1)))
     assertEquals(Applicative[List].compose[Option].pure(1), List(Some(1)))
+  }
+
+  test("Validated") {
+    type ValidationResult[A] = ValidatedNec[String, A]
+
+    def isValidOne(o: String): ValidationResult[String] = Either.cond(o == "one", o, "Invalid one").toValidatedNec
+    def isValidTwo(t: String): ValidationResult[String] = Either.cond(t == "two", t, "Invalid two").toValidatedNec
+
+    final case class Form(one: String, two: String)
+
+    assertEquals((isValidOne("one"), isValidTwo("two")).mapN(Form), Valid(Form("one", "two")))
+    assertEquals(
+      (isValidOne("two"), isValidTwo("one")).mapN(Form),
+      Invalid(NonEmptyChain("Invalid one", "Invalid two"))
+    )
   }
 }
 
