@@ -8,6 +8,7 @@ import cats.data.EitherNes
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
+import scala.util.control.NonFatal
 
 class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteContext {
   test("unsafeRun") {
@@ -123,6 +124,71 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
     assertEquals(
       (error1, ok, error2).parMapN(Full.apply).leftMap(_.toList),
       List(Error("error 1"), Error("error 2")).asLeft[Full]
+    )
+  }
+
+  test("error handling") {
+    assertIO(IO.raiseError(new RuntimeException("boom")).handleError(_ => "fallback"), "fallback")
+
+    assertIO(
+      IO.raiseError(new RuntimeException("boom")).recover { case NonFatal(_) =>
+        "fallback"
+      },
+      "fallback"
+    )
+    assertIO(IO.raiseError(new RuntimeException("boom")).handleErrorWith(_ => IO("fallback")), "fallback")
+
+    assertIO(
+      IO.raiseError(new RuntimeException("boom")).recoverWith { case NonFatal(_) =>
+        IO("fallback")
+      },
+      "fallback"
+    )
+
+    assertIO(
+      IO(false).ensure(new RuntimeException("boom"))(_ == true).attempt.map(_.leftMap(_.getMessage)),
+      Left("boom")
+    )
+
+    assertIO(
+      IO(false)
+        .ensureOr(s => new RuntimeException(s"value=$s, error: boom"))(_ == true)
+        .attempt
+        .map(_.leftMap(_.getMessage)),
+      Left("value=false, error: boom")
+    )
+
+    assertIO(
+      IO.raiseError(new RuntimeException("boom"))
+        .adaptError { case NonFatal(_) =>
+          new RuntimeException("new error")
+        }
+        .attempt
+        .map(_.leftMap(_.getMessage)),
+      Left("new error")
+    )
+
+    assertIO(
+      IO("two")
+        .reject {
+          case "one" => new RuntimeException("error 1")
+          case "two" => new RuntimeException("error 2")
+          case _     => new RuntimeException("error any")
+        }
+        .attempt
+        .map(_.leftMap(_.getMessage)),
+      Left("error 2")
+    )
+
+    assertIO(
+      IO.raiseError(new RuntimeException("boom"))
+        .redeemWith(e => IO(s"${e.getMessage} recover"), _ => IO("bind")),
+      "boom recover"
+    )
+
+    assertIO(
+      IO(true).redeemWith(_ => IO("recover"), b => IO(s"$b bind")),
+      "true bind"
     )
   }
 }
