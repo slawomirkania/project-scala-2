@@ -109,4 +109,52 @@ class ScalaSuite extends CatsEffectSuite {
     assertEquals(List(1, 2, 3, 4).filter { x: Int => x % 2 != 0 }, List(1, 3))
     assertEquals(List(1, 2, 3, 4).filter { x: Int => x % 2 == 0 }, List(2, 4))
   }
+
+  test("ADT") {
+    sealed trait Color // sum type
+    case object Red   extends Color
+    case object Green extends Color
+    case object Blue  extends Color
+
+    // case class vs case object - single instance
+    // object vs case object toString, improved pattern matching
+
+    object Color {
+      def values: Set[Color] = Set(Red, Green, Blue)
+
+      implicit class ColorOps(in: Color) {
+        def hex: String = in match {
+          case Red   => "#F00"
+          case Green => "#0F0"
+          case Blue  => "#00F"
+        }
+      }
+    }
+
+    assertEquals(Red.toString, "Red")
+    assertEquals(Color.values.map(_.hex), Set("#F00", "#0F0", "#00F"))
+
+    sealed trait Error // hybrid type
+    case class NotFound(message: String, code: Int = 404)   extends Error // product type
+    case class BadRequest(message: String, code: Int = 400) extends Error
+    case class InternalError(code: Int = 500)               extends Error
+    case object Unknown                                     extends Error
+
+    object Error {
+      implicit class ErrorOps(in: Error) {
+        def asString: String =
+          in match {
+            case NotFound(message, code)   => s"$code error: $message"
+            case BadRequest(message, code) => s"$code error: $message"
+            case InternalError(code)       => s"$code error: try again later"
+            case Unknown                   => "Unknown error"
+          }
+      }
+    }
+
+    assertEquals(NotFound("Resource not found").asString, "404 error: Resource not found")
+    assertEquals(BadRequest("Invalid form field: username").asString, "400 error: Invalid form field: username")
+    assertEquals(InternalError().asString, "500 error: try again later")
+    assertEquals(Unknown.asString, "Unknown error")
+  }
 }
