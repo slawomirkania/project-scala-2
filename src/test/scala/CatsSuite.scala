@@ -116,6 +116,21 @@ class CatsSuite extends CatsEffectSuite with CatsSuiteContext with DisciplineSui
       Invalid(NonEmptyChain("Invalid one", "Invalid two"))
     )
   }
+
+  test("Bifunctor") {
+    def handle(e: Either[String, Int]) = e.bimap(l => s"Error: $l", r => r * 2)
+
+    val errorHandled = handle(Left("issue"))
+    val okHandled    = handle(Right(4))
+
+    assertEquals(errorHandled, Left("Error: issue"))
+    assertEquals(okHandled, Right(8))
+
+    assertEquals(errorHandled.leftMap(l => s"Another level: $l"), Left("Another level: Error: issue"))
+    assertEquals(okHandled.map(_ * 3), Right(24))
+
+    assertEquals((20, 100).bimap(_ * 2, _ - 10), (40, 90))
+  }
 }
 
 trait CatsSuiteContext {
