@@ -224,6 +224,15 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
     assertIO(result, "one two three")
   }
 
+  test("Resource - release even after failure") {
+    val result =
+      Resource.make(IO.println("acquired") >> IO("one"))(_ => IO.println("closed")).map(_ + " two").use { s =>
+        IO.raiseError(new RuntimeException("Boom"))
+      }
+
+    assertIO(result.attempt.map(_.leftMap(_.getMessage)), Left("Boom"))
+  }
+
   test("Parallelism depends on CPUs") {
     def task(i: Int): IO[String] = IO(s"processing $i").print
 
