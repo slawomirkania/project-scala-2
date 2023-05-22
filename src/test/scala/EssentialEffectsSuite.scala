@@ -9,7 +9,9 @@ import cats.effect.kernel.Resource
 import cats.effect.testkit.TestControl
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.Future
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
+import scala.util.{ Failure, Success }
 import scala.util.control.NonFatal
 
 class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteContext {
@@ -257,6 +259,30 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
       IO("non blocking 2").print,
       IO.blocking("blocking 2").print
     ).parTupled
+  }
+
+  test("IO.async") {
+    def fromFuture_(fio: IO[Future[Int]]): IO[Int] =
+      fio.flatMap { cf =>
+        IO.async_[Int] { cb =>
+          cf.onComplete {
+            case Success(a) => cb(Right(a))
+            case Failure(e) => cb(Left(e))
+          }
+        }.flatTap(IO.println)
+      }
+
+    fromFuture_(IO(Future(1))) // should not start at all
+
+    val one = fromFuture_(IO(Future(1))) // should not start yet
+
+    assertIO(
+      for {
+        one <- one
+        two <- fromFuture_(IO(Future(2)))
+      } yield (one, two),
+      (1, 2)
+    )
   }
 }
 
