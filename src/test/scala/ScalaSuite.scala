@@ -157,4 +157,11 @@ class ScalaSuite extends CatsEffectSuite {
     assertEquals(InternalError().asString, "500 error: try again later")
     assertEquals(Unknown.asString, "Unknown error")
   }
+
+  test("Collections - partition") {
+    val (odd, even) = List(1, 2, 3, 4, 5, 6, 7).partition(_ % 2 != 0)
+
+    assertEquals(odd, List(1, 3, 5, 7))
+    assertEquals(even, List(2, 4, 6))
+  }
 }
