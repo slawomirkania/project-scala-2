@@ -8,6 +8,7 @@ import cats.data.EitherNes
 import cats.effect.kernel.Resource
 import cats.effect.testkit.TestControl
 
+import java.io.RandomAccessFile
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Future
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
@@ -231,6 +232,46 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
       }
 
     assertIO(result.attempt.map(_.leftMap(_.getMessage)), Left("Boom"))
+  }
+
+  test("Resource - read and close file") {
+    val path = getClass.getResource("/input2").getPath
+
+    trait FileReader {
+      def read(offset: Int, length: Int): IO[(String, Int)]
+      def close: IO[Unit]
+    }
+
+    object FileReader {
+      def make(path: String): IO[FileReader] = IO {
+        new FileReader {
+          private val file = new RandomAccessFile(path, "r")
+
+          def read(offset: Int, length: Int) = {
+            file.seek(offset)
+            val buf = new Array[Byte](length)
+            val len = file.read(buf)
+            IO((buf.map(_.toChar).mkString, offset + len))
+          }
+
+          def close = IO(file.close())
+        }
+      }
+    }
+
+    def read(offset: Int, length: Int) = Resource
+      .make(IO.println(s"Opening file $path") >> FileReader.make(path))(r =>
+        IO.println(s"Closing file $path") >> IO(r.close)
+      )
+      .use(_.read(offset, length))
+
+    val program = (
+      read(0, 5),
+      read(5, 4),
+      read(9, 8)
+    ).parTupled
+
+    assertIO(program, (("some ", 5), ("text", 9), (" example", 17)))
   }
 
   test("Parallelism depends on CPUs") {
