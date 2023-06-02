@@ -227,7 +227,7 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
 
   test("Resource - release even after failure") {
     val result =
-      Resource.make(IO.println("acquired") >> IO("one"))(_ => IO.println("closed")).map(_ + " two").use { s =>
+      Resource.make(IO.println("acquired") >> IO("one"))(_ => IO.println("closed")).map(_ + " two").use { _ =>
         IO.raiseError(new RuntimeException("Boom"))
       }
 
@@ -272,6 +272,69 @@ class EssentialEffectsSuite extends CatsEffectSuite with EssentialEffectsSuiteCo
     ).parTupled
 
     assertIO(program, (("some ", 5), ("text", 9), (" example", 17)))
+  }
+
+  test("Resource - Fiber - background task".ignore) {
+    def loop(name: String) = (for {
+      _ <- IO.sleep(200.milli)
+      _ <- IO.println(s"task $name trigger")
+    } yield ()).foreverM
+
+    def backgroundTask(name: String) = Resource
+      .make(IO.println(s"start $name") >> loop(name).start)(IO.println(s"cancel $name") >> _.cancel)
+      .void
+
+    backgroundTask("run").use { _ =>
+      IO.println("Other task while background task is running") >> IO.sleep(5.seconds) >> IO.println(
+        "Other task is done"
+      )
+    }
+  }
+
+  test("IO.background".ignore) {
+    def loop(name: String) = (for {
+      _ <- IO.sleep(200.milli)
+      _ <- IO.println(s"task $name trigger")
+    } yield ()).foreverM.onCancel(IO.println(s"cancel $name"))
+
+    IO.println("start run") >> loop("run").background.use { _ =>
+      IO.println("Other task while background task is running") >> IO.sleep(5.seconds) >> IO.println(
+        "Other task is done"
+      )
+    }
+  }
+
+  test("Supervisor") {
+    import cats.effect.std.Supervisor
+
+    Supervisor[IO](await = true).use { supervisor =>
+      val program = for {
+        fib1 <- (IO.sleep(10.seconds) >> IO.println("first finished")).onCancel(IO.println("first canceled")).start
+        fib2 <- (IO.sleep(15.seconds) >> IO.println("seconds finished")).onCancel(IO.println("second canceled")).start
+        _    <- fib1.join
+        _    <- fib2.join // leaky
+      } yield ()
+
+      supervisor.supervise(program.onCancel(IO.println("program canceled")).timeout(20.seconds)).void
+    }
+  }
+
+  test("Resource early release") {
+    val source = Resource.make(IO.println("reading source") >> IO.pure("source"))(_ => IO.println("closing source"))
+    def config(source: String) =
+      Resource.make(IO.println(s"making config from $source") >> IO.pure("cnf"))(_ => IO.println("closing config"))
+    def conn(config: Config) = Resource.make(IO.println(s"opening DB connection with config $config"))(_ =>
+      IO.println(s"closing DB connection with config $config")
+    )
+
+    final case class Config(value: String)
+
+    (for {
+      conf <- Resource.liftK(source.use(s => config(s).use(configValue => IO.pure(Config(configValue)))))
+      _    <- conn(conf)
+    } yield ()).use { _ =>
+      IO.println("querying DB")
+    }
   }
 
   test("Parallelism depends on CPUs") {
