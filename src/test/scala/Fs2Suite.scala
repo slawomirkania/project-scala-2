@@ -83,4 +83,26 @@ class Fs2Suite extends CatsEffectSuite {
 
     assertIO(result, List[Long](1, 2))
   }
+
+  test("evalTap") {
+    val result = Stream
+      .emits(List(1, 2))
+      .covary[IO]
+      .evalTap(IO.println)
+      .compile
+      .toList
+
+    assertIO(result, List(1, 2))
+  }
+
+  test("parEvalTap") {
+    val result = Stream
+      .emits(List(1, 2))
+      .covary[IO]
+      .parEvalMap(4)(i => IO.println("incrementing: " + i) >> IO(i + 1))
+      .compile
+      .toList
+
+    assertIO(result, List(2, 3))
+  }
 }

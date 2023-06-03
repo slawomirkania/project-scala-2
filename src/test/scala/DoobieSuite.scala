@@ -1,6 +1,7 @@
 package com.example
 
-import cats.effect.{ IO, Resource }
+import cats.effect.{ Concurrent, IO, Resource }
+import cats.implicits._
 import munit.{ CatsEffectSuite, ScalaCheckEffectSuite }
 import doobie._
 import doobie.implicits._
@@ -24,7 +25,7 @@ class DoobieSuite extends CatsEffectSuite with ScalaCheckEffectSuite with Shrink
     forAllF(Gen.alphaUpperStr.retryUntil(_.length <= 3), Gen.alphaUpperStr, Gen.choose(1, 10000)) {
       (code, name, population) =>
         val program = for {
-          _     <- Queries.dropTable.update.run
+          _     <- Queries.dropTables.update.run
           _     <- Queries.createCountryTable.update.run
           _     <- Queries.insertData.update.run
           _     <- sql"INSERT INTO country VALUES ($code, $name, $population)".update.run
@@ -48,7 +49,7 @@ class DoobieSuite extends CatsEffectSuite with ScalaCheckEffectSuite with Shrink
         val combinedExpected = Combined(partExpected, name)
 
         val program = for {
-          _        <- Queries.dropTable.update.run
+          _        <- Queries.dropTables.update.run
           _        <- Queries.createCountryTable.update.run
           _        <- sql"INSERT INTO country VALUES ($code, $name, $population)".update.run
           full     <- sql"SELECT code, name, population FROM country".query[Full].unique
@@ -79,13 +80,38 @@ class DoobieSuite extends CatsEffectSuite with ScalaCheckEffectSuite with Shrink
     val numbers = Numbers(One(1), Two(2), Incremented(3))
 
     val program = for {
-      _      <- Queries.dropTable.update.run
+      _      <- Queries.dropTables.update.run
       _      <- Queries.createNumbersTable.update.run
       _      <- sql"INSERT INTO numbers VALUES ($numbers)".update.run
       result <- sql"SELECT one, two, incremented FROM numbers".query[(Int, Int, Int)].unique
     } yield result
 
     assertIO(H2Store.commit(program), (1, 2, 4))
+  }
+
+  test("Stream".ignore) {
+    val payloads = List.fill(40000)("a".repeat(9000))
+
+    def insert(payload: String, id: Int) =
+      sql"INSERT INTO payloads VALUES ($id, $payload)".update.run
+
+    val result = WeakAsync.liftK[IO, ConnectionIO].use { fk =>
+      val program = for {
+        _ <- Queries.dropTables.update.run
+        _ <- Queries.createPayloadsTable.update.run
+        _ <- payloads.zipWithIndex.traverse { case (payload, id) => insert(payload, id) }
+        _ <- sql"SELECT id, value FROM payloads"
+          .query[(Int, String)]
+          .stream
+          .evalTap { case (id, _) => fk(IO.println("Processing: " + id)) }
+          .compile
+          .drain
+      } yield ()
+
+      H2Store.commit(program)
+    }
+
+    assertIO_(result)
   }
 }
 
@@ -124,14 +150,22 @@ object DoobieSuite {
            |)
            |""".stripMargin
 
+    val createPayloadsTable =
+      sql"""
+           |CREATE TABLE payloads (
+           |  id          integer   NOT NULL,
+           |  value       text   NOT NULL
+           |)
+           |""".stripMargin
+
     val insertData =
       sql"""
            |INSERT INTO country VALUES ('PL', 'Poland', 40000000);
            |INSERT INTO country VALUES ('US', 'USA', 400000000);
            |""".stripMargin
 
-    val dropTable =
-      sql"""DROP TABLE IF EXISTS country; DROP TABLE IF EXISTS numbers;"""
+    val dropTables =
+      sql"""DROP TABLE IF EXISTS country; DROP TABLE IF EXISTS numbers; DROP TABLE IF EXISTS payloads"""
   }
 
   final case class Numbers(one: One, two: Two, incremented: Incremented)
