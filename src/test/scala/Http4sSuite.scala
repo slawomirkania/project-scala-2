@@ -7,8 +7,12 @@ import munit.CatsEffectSuite
 import org.http4s._
 import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
 import org.http4s.circe.jsonOf
+import org.http4s.client.middleware.{ Retry, RetryPolicy }
 import org.http4s.dsl.io._
 import org.http4s.implicits._
+
+import scala.collection.mutable
+import scala.concurrent.duration.DurationInt
 
 class Http4sSuite extends CatsEffectSuite {
   import Http4sSuite._
@@ -48,6 +52,13 @@ class Http4sSuite extends CatsEffectSuite {
       List("text/plain; charset=UTF-8", "9")
     )
   }
+
+  test("Retry middleware - exponentialBackoff") {
+    val client: Client[IO] =
+      Retry[IO](RetryPolicy(RetryPolicy.exponentialBackoff(2.seconds, 6)))(Client.fromHttpApp(routes.orNotFound))
+
+    assertIO(client.expect[FooBar](retryErrorsRequest), FooBar("f", "b"))
+  }
 }
 
 object Http4sSuite {
@@ -62,13 +73,25 @@ object Http4sSuite {
     implicit val nameEntityDecoder = jsonOf[IO, FooBar]
   }
 
+  val retryErrorsResponsesQueue = new mutable.Queue[IO[Response[IO]]]()
+    .enqueue(
+      RequestTimeout("Timeout"),
+      InternalServerError("Internal server error"),
+      ServiceUnavailable("Unavailable"),
+      BadGateway("Bad gateway"),
+      GatewayTimeout("Gateway timeout"),
+      Ok(s"""{"foo": "f", "bar": "b"}""")
+    )
+
   val routes = HttpRoutes
-    .of[IO] { case GET -> Root / "hello" / foo / bar =>
-      Ok(s"""{"foo": "$foo", "bar": "$bar"}""")
+    .of[IO] {
+      case GET -> Root / "hello" / foo / bar      => Ok(s"""{"foo": "$foo", "bar": "$bar"}""")
+      case GET -> Root / "hello" / "retry-errors" => retryErrorsResponsesQueue.dequeue()
     }
 
-  val validRequest   = Request[IO](Method.GET, uri"/hello/f/b")
-  val invalidRequest = Request[IO](Method.GET, uri"/invalid")
+  val validRequest       = Request[IO](Method.GET, uri"/hello/f/b")
+  val invalidRequest     = Request[IO](Method.GET, uri"/invalid")
+  val retryErrorsRequest = Request[IO](Method.GET, uri"/hello/retry-errors")
 
   object Middleware {
     def addHeader(response: Response[IO])(headers: Header.ToRaw): Response[IO] =
