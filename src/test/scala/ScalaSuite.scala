@@ -164,4 +164,45 @@ class ScalaSuite extends CatsEffectSuite {
     assertEquals(odd, List(1, 3, 5, 7))
     assertEquals(even, List(2, 4, 6))
   }
+
+  test("trait self") {
+    trait CommonQueries {
+      def getBy(id: String): String
+      def getAll: String
+    }
+
+    trait ManagementQueries {
+      this: CommonQueries =>
+      def deleteBy(id: String): String
+    }
+
+    class SuperAdminPanel extends ManagementQueries with CommonQueries {
+      override def getAll                       = "getAll records"
+      override def getBy(id: String)            = s"getBy id: $id any record"
+      override def deleteBy(id: String): String = s"deleteBy id: $id any record"
+    }
+
+    class AdminPanel extends ManagementQueries with CommonQueries {
+      override def getAll                       = "getAll records"
+      override def getBy(id: String)            = s"getBy id: $id any record"
+      override def deleteBy(id: String): String = s"deleteBy id: $id record with access"
+    }
+
+    class UserPanel extends CommonQueries {
+      override def getAll            = "getAll records of authorized user"
+      override def getBy(id: String) = s"getBy id: $id of authorized user"
+    }
+
+    val superAdminPanel = new SuperAdminPanel
+    val adminPanel      = new AdminPanel
+    val userPanel       = new UserPanel
+
+    assertEquals(userPanel.getAll, "getAll records of authorized user")
+    assertEquals(userPanel.getBy("id"), "getBy id: id of authorized user")
+    assertEquals(superAdminPanel.getAll, "getAll records")
+    assertEquals(adminPanel.getAll, "getAll records")
+    assertEquals(adminPanel.getBy("id"), "getBy id: id any record")
+    assertEquals(adminPanel.deleteBy("id"), "deleteBy id: id record with access")
+    assertEquals(superAdminPanel.deleteBy("id"), "deleteBy id: id any record")
+  }
 }
