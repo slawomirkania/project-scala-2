@@ -1,5 +1,10 @@
 package com.example
 
+import eu.timepit.refined.api.{ RefType, Refined }
+import eu.timepit.refined.W
+import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric._
+import eu.timepit.refined.string.{ EndsWith, MatchesRegex }
 import munit.CatsEffectSuite
 
 import scala.math.BigDecimal.RoundingMode
@@ -204,5 +209,27 @@ class ScalaSuite extends CatsEffectSuite {
     assertEquals(adminPanel.getBy("id"), "getBy id: id any record")
     assertEquals(adminPanel.deleteBy("id"), "deleteBy id: id record with access")
     assertEquals(superAdminPanel.deleteBy("id"), "deleteBy id: id any record")
+  }
+
+  test("Refined") {
+    val aPositiveInteger: Refined[Int, Positive]          = 42
+    val aPositiveIntegerInfix: Int Refined Positive       = 42
+    val greaterEqual: Int Refined GreaterEqual[50]        = 51
+    val greaterEqualW: Int Refined GreaterEqual[W.`50`.T] = 51
+
+    type Email = String Refined MatchesRegex[W.`"""[a-z0-9]+@[a-z0-9]+\\.[a-z0-9]{2,}"""`.T]
+    val email: Email = "test@domain.com"
+
+    val prompt: String Refined EndsWith["$"] = "test $"
+
+    // runtime
+    assertEquals(
+      RefType.applyRef[Email]("test"),
+      Left("""Predicate failed: "test".matches("[a-z0-9]+@[a-z0-9]+\.[a-z0-9]{2,}").""")
+    )
+    assertEquals(
+      RefType.applyRef[Email]("test@domain.com").map(_.value),
+      Right("test@domain.com")
+    )
   }
 }

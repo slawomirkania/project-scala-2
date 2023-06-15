@@ -21,6 +21,8 @@ libraryDependencies ++= Seq(
 )++ Seq(
   Dependency.fs2Core,
   Dependency.fs2IO
+) ++ Seq (
+  Dependency.refined
 )
 
 lazy val root = (project in file("."))

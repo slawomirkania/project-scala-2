@@ -5,6 +5,7 @@ object Dependency {
     val doobie        = "1.0.0-RC1"
     val http4sVersion = "0.23.18"
     val fs2           = "3.6.1"
+    val refined       = "0.10.3"
   }
 
   val catsEffect = "org.typelevel" %% "cats-effect" % "3.4.8"
@@ -20,6 +21,8 @@ object Dependency {
 
   val fs2Core = "co.fs2" %% "fs2-core" % Version.fs2
   val fs2IO   = "co.fs2" %% "fs2-io"   % Version.fs2
+
+  val refined  = "eu.timepit" %% "refined" % Version.refined
 
   val munitCatsEffect       = "org.typelevel" %% "munit-cats-effect-3"     % "1.0.7" % Test
   val munitScalaCheckEffect = "org.typelevel" %% "scalacheck-effect-munit" % "1.0.4" % Test
