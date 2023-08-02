@@ -232,4 +232,20 @@ class ScalaSuite extends CatsEffectSuite {
       Right("test@domain.com")
     )
   }
+
+  test("partitionMap") {
+    val (nonSatisfy, satisfy) = List(1, 2, 3, 4, 5, 6).partitionMap { i =>
+      if (i % 2 == 0) Right(i) else Left(i)
+    }
+
+    assertEquals(satisfy, List(2, 4, 6))
+    assertEquals(nonSatisfy, List(1, 3, 5))
+  }
+
+  test("partition") {
+    val (satisfy, nonSatisfy) = List(1, 2, 3, 4, 5, 6).partition(i => i % 2 == 0)
+
+    assertEquals(satisfy, List(2, 4, 6))
+    assertEquals(nonSatisfy, List(1, 3, 5))
+  }
 }
