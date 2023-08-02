@@ -131,6 +131,13 @@ class CatsSuite extends CatsEffectSuite with CatsSuiteContext with DisciplineSui
 
     assertEquals((20, 100).bimap(_ * 2, _ - 10), (40, 90))
   }
+
+  test("partitionEither") {
+    val (lefts, rights) = List(1, 5, 6, 4, 2, 3).partitionEither(i => if (i % 2 == 0) Right(i) else Left(i))
+
+    assertEquals(lefts, List(1, 5, 3))
+    assertEquals(rights, List(6, 4, 2))
+  }
 }
 
 trait CatsSuiteContext {
