@@ -248,4 +248,24 @@ class ScalaSuite extends CatsEffectSuite {
     assertEquals(satisfy, List(2, 4, 6))
     assertEquals(nonSatisfy, List(1, 3, 5))
   }
+
+  test("fill") {
+    assertEquals(List.fill(5)("a"), List("a", "a", "a", "a", "a"))
+  }
+
+  test("reduce") {
+    assertEquals(List(1, 2, 3, 4, 5).reduce(_ - _), -13)
+  }
+
+  test("foldLeft") {
+    assertEquals(List(1, 2, 3, 4, 5).foldLeft(0)(_ - _), -15)
+  }
+
+  test("zip") {
+    assertEquals(List(1, 2, 3) zip List("a", "b", "c"), List((1, "a"), (2, "b"), (3, "c")))
+  }
+
+  test("unzip") {
+    assertEquals(List((1, "a"), (2, "b"), (3, "c")).unzip, (List(1, 2, 3), List("a", "b", "c")))
+  }
 }
