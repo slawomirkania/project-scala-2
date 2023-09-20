@@ -268,4 +268,69 @@ class ScalaSuite extends CatsEffectSuite {
   test("unzip") {
     assertEquals(List((1, "a"), (2, "b"), (3, "c")).unzip, (List(1, 2, 3), List("a", "b", "c")))
   }
+
+  // Rock the JVM
+  test("single abstract method") {
+    trait Action {
+      def act(x: Int): Int
+      def act2(x: Int): Int = 1 // still compile because we have only one not implemented method in the trait
+    }
+
+    val myAction: Action = (x: Int) => x + 1
+
+    assertEquals(myAction.act(4), 5)
+  }
+
+  test("right associative methods") {
+    assertEquals(1 :: 2 :: List(3, 4), List(1, 2, 3, 4))
+    // compiler rewrites it to List(3, 4).::(2).::(1)
+    assertEquals(List(3, 4).::(2).::(1), List(1, 2, 3, 4))
+
+    case class MessageQueue[T](values: List[T]) {
+      def -->:(value: T): MessageQueue[T] =
+        new MessageQueue[T](value :: values)
+    }
+
+    val queue = 3 -->: 2 -->: 1 -->: new MessageQueue[Int](Nil)
+
+    assertEquals(queue.values, List(3, 2, 1))
+  }
+
+  test("baked-in setters") {
+    class MutableIntWrapper {
+      private var internalValue = 0
+
+      def value                        = internalValue
+      def value_=(newValue: Int): Unit = internalValue = newValue
+    }
+
+    val wrapper = new MutableIntWrapper
+
+    assertEquals(wrapper.value, 0)
+    wrapper.value = 43
+    assertEquals(wrapper.value, 43)
+  }
+
+  test("multi-word members") {
+    case class Person(name: String) {
+      def `then said`(thing: String) = s"$name then said: $thing"
+    }
+
+    assertEquals(Person("John") `then said` "hello!", "John then said: hello!")
+  }
+
+  test("backticks") {
+    val param = 1
+    val data  = 1
+
+    val result = data match {
+      case x if x == param => x + 1
+    }
+
+    val result2 = data match {
+      case x @ `param` => x + 2
+    }
+
+    assertEquals((result, result2), (2, 3))
+  }
 }
