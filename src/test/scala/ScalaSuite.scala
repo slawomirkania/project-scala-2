@@ -368,4 +368,46 @@ class ScalaSuite extends CatsEffectSuite {
 
     assertEquals((result, result2), (2, 3))
   }
+
+  test("pattern matching - list extractor") {
+    val numbers = List(1, 2, 3, 4, 5, 6, 7)
+
+    val thirdElementThree1 = numbers match {
+      case List(_, _, 3, fourth, _*) => s"After element 3 we have $fourth" // up to 22 for list unapply
+    }
+
+    val thirdElementThree2 = numbers match {
+      case _ :: _ :: 3 :: fourth :: _ => s"After element 3 we have $fourth" // infix
+    }
+
+    val startFromOneEndSeven = numbers match {
+      case List(1, _*) :+ 7 => true
+    }
+
+    assertEquals(thirdElementThree1, "After element 3 we have 4")
+    assertEquals(thirdElementThree2, "After element 3 we have 4")
+    assert(startFromOneEndSeven)
+  }
+
+  test("pattern matching - type specifiers") {
+    def value: Any = 45
+
+    val valueType = value match {
+      case _: Int    => "Int"
+      case _: String => "String"
+      case _         => "other"
+    }
+
+    assertEquals(valueType, "Int")
+  }
+
+  test("pattern matching - name binding") {
+    case class Person(name: String)
+
+    val result = Person("Bob") match {
+      case p @ Person(name) => s"person's name is $name: $p"
+    }
+
+    assertEquals(result, "person's name is Bob: Person(Bob)")
+  }
 }
