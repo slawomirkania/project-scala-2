@@ -113,4 +113,22 @@ class Fs2Suite extends CatsEffectSuite {
 
     assertIO(result, List(2, 3))
   }
+
+  test("challenge") {
+    val result = Stream
+      .emits(List[Double](10, 20, 30, 40, 50, 25, 35, 1, 2))
+      .mapAccumulate(List.empty[Double]) { (acc, digit) =>
+        if (acc.size < 4) (acc.appended(digit), None)
+        else {
+          val last5 = acc.appended(digit).sorted.takeRight(5)
+          (last5, Some(last5.sum / 5))
+        }
+      }
+      .map { case (_, r) => r }
+
+    assertEquals(
+      result.compile.toList,
+      List(None, None, None, None, Some(30.0), Some(33.0), Some(36.0), Some(36.0), Some(36.0))
+    )
+  }
 }
